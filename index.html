@@ -1,0 +1,17 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SYSTR — СЮСТР</title><link rel="stylesheet" href="/style.css"></head><body>
+<header><div class="brand"><img src="/logo.jpg"><span><b>SYSTR</b><br><small>СЮСТР</small></span></div><nav id="nav"><a class="button" href="/login.html">Увійти</a></nav></header>
+<section class="hero"><div><h1>Натуральне мило ручної роботи</h1><p id="subtitle">СЮСТР — майстерня натурального мила</p><a class="button" href="#catalog">Переглянути каталог</a></div><img src="/logo.jpg"></section>
+<main class="wrap"><h2 id="catalog">Каталог</h2><div id="products" class="grid"></div><section class="panel"><h2>Кошик</h2><div id="cart"></div><button id="checkoutBtn" onclick="checkout()">Оформити замовлення</button></section></main>
+<script>
+let cart=JSON.parse(localStorage.getItem("systrCart")||"[]"), data=[];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function settings(){const s=await(await fetch("/api/settings")).json();document.body.style.background=s.background||"";subtitle.textContent=s.subtitle||""}
+async function auth(){const m=await(await fetch("/api/me")).json();if(!m){nav.innerHTML='<a class="button" href="/login.html">Увійти</a>';return}if(m.theme==="dark")document.body.classList.add("dark");nav.innerHTML=`<a class="button" href="/profile.html">${esc(m.name||m.username)}</a>${["admin","owner"].includes(m.role)?'<a class="button" href="/admin.html">Адмін</a>':""}<button onclick="logout()">Вийти</button>`}
+async function logout(){await fetch("/api/logout",{method:"POST"});location.reload()}
+async function load(){data=await(await fetch("/api/products")).json();products.innerHTML=data.map(p=>`<article class="card"><img src="${p.image||"/logo.jpg"}"><h3>${esc(p.name)}</h3><p>${esc(p.desc)}</p><div class="price">${Number(p.price)} ₴</div><button onclick="add('${p.id}')">У кошик</button></article>`).join("")}
+function add(id){cart.push(id);localStorage.setItem("systrCart",JSON.stringify(cart));draw()}
+function draw(){cart.innerHTML;const el=document.getElementById("cart");if(!cart.length){el.innerHTML="<p>Кошик порожній</p>";return}el.innerHTML=cart.map((id,i)=>{const p=data.find(x=>String(x.id)===String(id));return p?`<p>${esc(p.name)} — ${p.price} ₴ <button onclick="removeItem(${i})">×</button></p>`:""}).join("")}
+function removeItem(i){cart.splice(i,1);localStorage.setItem("systrCart",JSON.stringify(cart));draw()}
+async function checkout(){const m=await(await fetch("/api/me")).json();if(!m){location="/login.html?next=checkout.html";return}if(!cart.length)return alert("Кошик порожній");location="/checkout.html"}
+Promise.all([settings(),auth(),load()]).then(draw);
+</script></body></html>
