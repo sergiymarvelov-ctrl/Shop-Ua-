@@ -1,0 +1,24 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><title>Вхід / Реєстрація</title></head><body>
+<main class="wrap"><form class="panel" id="authForm" style="max-width:440px;margin:45px auto">
+<img src="/logo.jpg" style="width:130px;display:block;margin:auto;border-radius:50%">
+<h2 id="title">Вхід</h2>
+<div style="display:flex;gap:8px;margin-bottom:12px"><button type="button" onclick="setMode('login')">Вхід</button><button type="button" onclick="setMode('register')">Реєстрація</button></div>
+<input id="u" placeholder="Логін" minlength="3" autocomplete="username" required>
+<input id="p" type="password" placeholder="Пароль" minlength="6" autocomplete="current-password" required>
+<button id="submitBtn" type="submit">Увійти</button><p id="msg"></p><p><a href="/">← До магазину</a></p>
+</form></main>
+<script>
+let mode='login';
+function setMode(v){mode=v;title.textContent=v==='login'?'Вхід':'Реєстрація';submitBtn.textContent=v==='login'?'Увійти':'Створити акаунт';p.autocomplete=v==='login'?'current-password':'new-password';msg.textContent=''}
+authForm.addEventListener('submit',async e=>{
+ e.preventDefault(); msg.textContent='';
+ try{
+  const r=await fetch(mode==='login'?'/api/login':'/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u.value.trim(),password:p.value})});
+  const j=await r.json();
+  if(!r.ok){msg.textContent=j.error||'Помилка';return}
+  if(mode==='register'){location.href='/';return}
+  location.href=['admin','owner'].includes(j.role)?'/admin.html':'/';
+ }catch(e){msg.textContent='Помилка з’єднання із сервером'}
+});
+(async()=>{try{const m=await(await fetch('/api/me',{cache:'no-store'})).json();if(m)location.href=['admin','owner'].includes(m.role)?'/admin.html':'/'}catch(e){}})();
+</script></body></html>
