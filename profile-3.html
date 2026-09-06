@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>СЮСТР — Мій профіль</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+body{margin:0;padding-bottom:86px}
+.pwrap{max-width:520px;margin:0 auto;padding:16px}
+.pcard{background:var(--card,#fffaf0);border:1px solid var(--line,#e6dcc8);border-radius:20px;padding:20px;margin:12px 0}
+.center{text-align:center}
+.avatar{width:72px;height:72px;margin:0 auto 12px;border-radius:50%;background:#eee1c5;display:flex;align-items:center;justify-content:center;font-size:34px}
+.pbtn{display:block;box-sizing:border-box;width:100%;margin-top:10px;padding:14px 16px;border:0;border-radius:12px;background:var(--gold,#b88a2b);color:white!important;font:inherit;font-weight:700;text-align:center;text-decoration:none}
+.pbtn.secondary{background:transparent;color:var(--ink,#332719)!important;border:1px solid var(--gold,#b88a2b)}
+.muted{opacity:.7}
+.row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--line,#e6dcc8)}
+.row:last-child{border-bottom:0}
+.row a{color:var(--ink,#332719)!important;text-decoration:none;width:100%;display:flex;justify-content:space-between}
+#loading{padding:40px 10px;text-align:center}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo">
+    <img src="/logo.jpg" alt="СЮСТР">
+    <span>Мій профіль</span>
+  </div>
+</header>
+
+<main class="pwrap">
+  <div id="loading">Завантаження профілю…</div>
+
+  <section id="guest" class="pcard center" hidden>
+    <div class="avatar">♙</div>
+    <h1>Мій профіль</h1>
+    <p class="muted">Увійдіть у свій акаунт або створіть новий.</p>
+    <a class="pbtn" href="/login.html?mode=login">Увійти в акаунт</a>
+    <a class="pbtn secondary" href="/login.html?mode=register">Створити акаунт</a>
+  </section>
+
+  <div id="user" hidden>
+    <section class="pcard center">
+      <div class="avatar">♙</div>
+      <h2 id="name">Користувач</h2>
+      <div id="username" class="muted"></div>
+    </section>
+
+    <section class="pcard">
+      <div class="row"><a href="/orders.html"><span>Мої замовлення</span><b>›</b></a></div>
+      <div class="row"><a href="/favorites.html"><span>Обране</span><b>›</b></a></div>
+      <div class="row"><a href="/cart.html"><span>Кошик</span><b>›</b></a></div>
+    </section>
+
+    <section class="pcard">
+      <h2>Промокод</h2>
+      <input id="promo" placeholder="Введіть промокод">
+      <button class="pbtn" type="button" onclick="usePromo()">Використати</button>
+      <p id="promoMsg" class="muted"></p>
+    </section>
+
+    <button class="pbtn secondary" type="button" onclick="logout()">Вийти з акаунта</button>
+  </div>
+</main>
+
+<nav class="bottom">
+  <a href="/"><b>⌂</b>Головна</a>
+  <a href="/catalog.html"><b>☷</b>Каталог</a>
+  <a href="/favorites.html"><b>♡</b>Обране</a>
+  <a href="/cart.html"><b>🛒</b>Кошик</a>
+  <a href="/profile.html"><b>♙</b>Профіль</a>
+</nav>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+
+async function initProfile(){
+  try{
+    const res = await fetch("/api/me", {cache:"no-store"});
+    let me = null;
+    try { me = await res.json(); } catch(e) {}
+
+    $("loading").hidden = true;
+
+    if(!res.ok || !me || !me.username){
+      $("guest").hidden = false;
+      return;
+    }
+
+    $("user").hidden = false;
+    $("name").textContent = me.name || me.username || "Користувач";
+    $("username").textContent = me.username ? "@" + me.username : "";
+  }catch(e){
+    $("loading").hidden = true;
+    $("guest").hidden = false;
+  }
+}
+
+async function logout(){
+  try{ await fetch("/api/logout",{method:"POST"}); }catch(e){}
+  location.replace("/profile.html");
+}
+
+async function usePromo(){
+  const code = $("promo").value.trim();
+  if(!code){ $("promoMsg").textContent="Введіть промокод."; return; }
+  try{
+    const res=await fetch("/api/promo/use",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({code})
+    });
+    const data=await res.json().catch(()=>({}));
+    $("promoMsg").textContent=res.ok ? "Промокод активовано ✓" : (data.error || "Не вдалося активувати промокод.");
+  }catch(e){
+    $("promoMsg").textContent="Помилка з'єднання.";
+  }
+}
+initProfile();
+</script>
+</body>
+</html>
