@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>СЮСТР — Вхід</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+.auth{min-height:100vh;background:#f8f2e5;padding:22px 16px;box-sizing:border-box}
+.box{max-width:430px;margin:auto}.brand{text-align:center;margin-bottom:18px}
+.brand img{width:100px;height:100px;border-radius:50%;object-fit:cover}.brand h1{margin:8px 0 2px}
+.card{background:var(--card,#fffaf0);border:1px solid var(--line,#e6dcc8);border-radius:20px;padding:20px}
+.card input{box-sizing:border-box;width:100%;margin:7px 0;padding:14px;border:1px solid var(--line,#d9ceb9);border-radius:11px;font-size:16px}
+.btn{box-sizing:border-box;width:100%;padding:14px;margin-top:10px;border:0;border-radius:11px;background:var(--gold,#b68a2e);color:white;font-size:16px;font-weight:700}
+.linkbtn{border:0;background:none;color:var(--gold,#a77a20);font-weight:700;font-size:15px;padding:5px}
+.switch{text-align:center;margin-top:17px}.msg{text-align:center;min-height:22px;color:#a33434}.hidden{display:none}
+.back{display:block;text-align:center;margin-top:15px;color:var(--ink,#332719);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="auth"><main class="box">
+<div class="brand"><img src="/logo.jpg" alt="СЮСТР"><h1>СЮСТР</h1><div>Майстерня натурального мила</div></div>
+
+<section id="loginSection" class="card">
+<h2>Увійти в акаунт</h2>
+<form id="loginForm">
+<input id="loginValue" autocomplete="username" placeholder="Логін або номер телефону" required>
+<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Пароль" required>
+<button id="loginButton" class="btn" type="submit">Увійти</button>
+<p id="loginMessage" class="msg"></p>
+</form>
+<p class="switch">Немає акаунта? <button id="openRegister" class="linkbtn" type="button">Створити акаунт</button></p>
+</section>
+
+<section id="registerSection" class="card hidden">
+<h2>Створити акаунт</h2>
+<form id="registerForm">
+<input id="regName" autocomplete="name" placeholder="Ім’я" required>
+<input id="regPhone" type="tel" autocomplete="tel" placeholder="Номер телефону" required>
+<input id="regUsername" autocomplete="username" minlength="3" placeholder="Логін (мінімум 3 символи)" required>
+<input id="regPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Пароль (мінімум 6 символів)" required>
+<input id="regPassword2" type="password" autocomplete="new-password" minlength="6" placeholder="Повторіть пароль" required>
+<button id="registerButton" class="btn" type="submit">Зареєструватися</button>
+<p id="registerMessage" class="msg"></p>
+</form>
+<p class="switch">Вже є акаунт? <button id="openLogin" class="linkbtn" type="button">Увійти</button></p>
+</section>
+
+<a class="back" href="/profile.html">← Назад до профілю</a>
+</main></div>
+
+<script>
+(function(){
+ const byId=(id)=>document.getElementById(id);
+ const loginSection=byId("loginSection");
+ const registerSection=byId("registerSection");
+ const loginForm=byId("loginForm");
+ const registerForm=byId("registerForm");
+
+ function show(mode){
+   const reg=mode==="register";
+   loginSection.classList.toggle("hidden",reg);
+   registerSection.classList.toggle("hidden",!reg);
+   history.replaceState(null,"",reg?"/login.html?mode=register":"/login.html?mode=login");
+ }
+ byId("openRegister").addEventListener("click",()=>show("register"));
+ byId("openLogin").addEventListener("click",()=>show("login"));
+
+ const mode=new URLSearchParams(location.search).get("mode");
+ if(mode==="register") show("register");
+
+ loginForm.addEventListener("submit",async function(e){
+   e.preventDefault();
+   const msg=byId("loginMessage"), btn=byId("loginButton");
+   msg.textContent=""; btn.disabled=true; btn.textContent="Входимо…";
+   try{
+     const res=await fetch("/api/login",{
+       method:"POST",
+       headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({
+         login:byId("loginValue").value.trim(),
+         password:byId("loginPassword").value
+       })
+     });
+     const data=await res.json().catch(()=>({}));
+     if(!res.ok){msg.textContent=data.error||"Не вдалося увійти";return;}
+     location.replace("/profile.html");
+   }catch(err){msg.textContent="Помилка з’єднання із сервером";}
+   finally{btn.disabled=false;btn.textContent="Увійти";}
+ });
+
+ registerForm.addEventListener("submit",async function(e){
+   e.preventDefault();
+   const msg=byId("registerMessage"), btn=byId("registerButton");
+   msg.textContent="";
+   const p1=byId("regPassword").value, p2=byId("regPassword2").value;
+   if(p1!==p2){msg.textContent="Паролі не співпадають";return;}
+   btn.disabled=true; btn.textContent="Створюємо акаунт…";
+   try{
+     const res=await fetch("/api/register",{
+       method:"POST",
+       headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({
+         phone:byId("regPhone").value.trim(),
+         username:byId("regUsername").value.trim(),
+         password:p1
+       })
+     });
+     const data=await res.json().catch(()=>({}));
+     if(!res.ok){msg.textContent=data.error||"Не вдалося зареєструватися";return;}
+     const name=byId("regName").value.trim();
+     if(name){
+       await fetch("/api/profile",{
+         method:"PATCH",
+         headers:{"Content-Type":"application/json"},
+         body:JSON.stringify({name:name})
+       });
+     }
+     location.replace("/profile.html");
+   }catch(err){msg.textContent="Помилка з’єднання із сервером";}
+   finally{btn.disabled=false;btn.textContent="Зареєструватися";}
+ });
+})();
+</script>
+</body>
+</html>
