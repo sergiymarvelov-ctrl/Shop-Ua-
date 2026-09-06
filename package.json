@@ -1,7 +1,0 @@
-{
-  "name":"soap-shop",
-  "version":"1.1.0",
-  "scripts":{"start":"node server.js"},
-  "engines":{"node":">=20"},
-  "dependencies":{"express":"^4.21.2","express-session":"^1.18.1","bcryptjs":"^2.4.3","multer":"^1.4.5-lts.1","pg":"^8.13.1"}
-}
