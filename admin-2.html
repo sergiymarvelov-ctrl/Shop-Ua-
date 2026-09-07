@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>СЮСТР — Адмін-панель</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f8f2e5;color:var(--ink,#342719)}
+.wrap{max-width:720px;margin:auto;padding:16px 16px 90px}
+.head{display:flex;align-items:center;gap:12px;margin:8px 0 14px}.head img{width:56px;height:56px;border-radius:50%;object-fit:cover}
+.card{background:var(--card,#fffaf0);border:1px solid var(--line,#e4d8c1);border-radius:18px;padding:17px;margin:12px 0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{text-align:center}.stat b{display:block;font-size:26px}
+.tabs{display:flex;gap:7px;overflow-x:auto;padding:5px 0 10px}.tabs button{white-space:nowrap}
+button,.btn{border:0;border-radius:10px;padding:11px 13px;background:var(--gold,#b58827);color:#fff;font-weight:700;text-decoration:none}
+.secondary{background:transparent;color:var(--ink,#342719);border:1px solid #c8aa6a}.danger{background:#9b4943}
+input,textarea,select{width:100%;padding:12px;margin:6px 0;border:1px solid #d9cdb6;border-radius:10px;background:#fffdf8;font:inherit}
+.item{padding:14px 0;border-bottom:1px solid var(--line,#e4d8c1);overflow:auto}.item:last-child{border:0}
+.product-img{width:70px;height:70px;object-fit:cover;border-radius:12px;float:right;margin-left:10px}
+.userline{display:flex;align-items:center;gap:9px}.avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#eee1c5}
+.badge{width:20px;height:20px;object-fit:contain;vertical-align:-4px;margin-left:4px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.hidden{display:none}.msg{min-height:20px}
+.back{color:var(--ink,#342719);text-decoration:none;font-weight:700}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="head"><img src="/logo.jpg"><div><h1 style="margin:0">Адмін-панель</h1><span id="who">СЮСТР</span></div></div>
+<a class="back" href="/profile.html">← Назад до профілю</a>
+<div id="denied" class="card hidden"><h2>Немає доступу</h2><p>Увійдіть як власник або адміністратор.</p></div>
+
+<div id="panel" class="hidden">
+<section class="stats">
+<div class="card stat"><b id="sUsers">0</b>Користувачів</div>
+<div class="card stat"><b id="sProducts">0</b>Товарів</div>
+<div class="card stat"><b id="sOrders">0</b>Замовлень</div>
+<div class="card stat"><b id="sPromos">0</b>Промокодів</div>
+</section>
+
+<div class="tabs">
+<button onclick="showTab('products')">🧼 Товари</button>
+<button onclick="showTab('orders')">📦 Замовлення</button>
+<button onclick="showTab('users')">👥 Користувачі</button>
+<button onclick="showTab('promos')">🎟 Промокоди</button>
+<button onclick="showTab('settings')">⚙️ Налаштування</button>
+</div>
+
+<section id="products" class="card pane">
+<h2>🧼 Товари</h2>
+<form id="productForm">
+<input name="name" placeholder="Назва товару" required>
+<input name="price" type="number" min="0" step="0.01" placeholder="Ціна, грн" required>
+<textarea name="desc" placeholder="Опис товару"></textarea>
+<label>Фото товару</label><input name="image" type="file" accept="image/*">
+<button type="submit">+ Додати товар</button><p id="productMsg" class="msg"></p>
+</form><div id="productList"></div>
+</section>
+
+<section id="orders" class="card pane hidden"><h2>📦 Замовлення</h2><div id="orderList"></div></section>
+<section id="users" class="card pane hidden"><h2>👥 Користувачі</h2><p>Тут можна призначити адміна та значок біля ніку.</p><div id="userList"></div></section>
+
+<section id="promos" class="card pane hidden">
+<h2>🎟 Промокоди</h2>
+<form id="promoForm"><input name="code" placeholder="Наприклад SYSTR10" required><input name="discount" type="number" min="0" max="100" placeholder="Знижка, %"><button>Створити</button><p id="promoMsg"></p></form>
+<div id="promoList"></div>
+</section>
+
+<section id="settings" class="card pane hidden">
+<h2>⚙️ Налаштування</h2>
+<form id="settingsForm">
+<input name="shopName" placeholder="Назва магазину">
+<input name="subtitle" placeholder="Підзаголовок">
+<textarea name="pickupText" placeholder="Самовивіз"></textarea>
+<textarea name="contactText" placeholder="Контакти"></textarea>
+<button>Зберегти</button><p id="settingsMsg"></p>
+</form>
+</section>
+</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const badgeSrc=b=>b==="check"?"/badge-check.png":b==="admin"?"/badge-admin.jpg":"";
+async function api(url,opt={}){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||("Помилка "+r.status));return d}
+function showTab(id){document.querySelectorAll(".pane").forEach(x=>x.classList.add("hidden"));$(id).classList.remove("hidden")}
+
+async function init(){
+ try{
+  const me=await api("/api/me");
+  if(!me||!["owner","admin"].includes(me.role))throw Error("denied");
+  $("who").textContent=me.name||me.username;
+  $("panel").classList.remove("hidden");
+  await Promise.all([stats(),products(),orders(),users(),promos(),loadSettings()]);
+ }catch(e){$("denied").classList.remove("hidden")}
+}
+async function stats(){const s=await api("/api/admin/stats");$("sUsers").textContent=s.users;$("sProducts").textContent=s.products;$("sOrders").textContent=s.orders;$("sPromos").textContent=s.promos}
+
+async function products(){
+ const a=await api("/api/products");
+ $("productList").innerHTML=a.map(p=>`<div class="item">${p.image?`<img class="product-img" src="${p.image}">`:""}<b>${esc(p.name)}</b><div>${Number(p.price||0)} грн</div><small>${esc(p.desc||"")}</small><div class="actions"><button class="secondary" onclick="editProduct('${p.id}')">Редагувати</button><button class="danger" onclick="delProduct('${p.id}')">Видалити</button></div></div>`).join("")||"<p>Товарів немає.</p>";
+}
+$("productForm").onsubmit=async e=>{e.preventDefault();$("productMsg").textContent="Додаємо…";try{await api("/api/admin/products",{method:"POST",body:new FormData(e.target)});e.target.reset();$("productMsg").textContent="Товар додано ✓";await products();await stats()}catch(x){$("productMsg").textContent=x.message}};
+async function editProduct(id){
+ const a=await api("/api/products"),p=a.find(x=>String(x.id)===String(id));if(!p)return;
+ const name=prompt("Назва:",p.name);if(name===null)return;
+ const price=prompt("Ціна:",p.price);if(price===null)return;
+ const desc=prompt("Опис:",p.desc||"");if(desc===null)return;
+ const f=new FormData();f.append("name",name);f.append("price",price);f.append("desc",desc);
+ try{await api("/api/admin/products/"+id,{method:"PATCH",body:f});await products()}catch(e){alert(e.message)}
+}
+async function delProduct(id){if(!confirm("Видалити товар?"))return;try{await api("/api/admin/products/"+id,{method:"DELETE"});await products();await stats()}catch(e){alert(e.message)}}
+
+async function orders(){
+ const a=await api("/api/admin/orders");
+ $("orderList").innerHTML=a.map(o=>`<div class="item"><b>#${o.id}</b> — ${esc(o.name||o.username)}<div>${Number(o.total||0)} грн · ${esc(o.phone||"")}</div><small>${esc(o.delivery||"")} ${esc(o.address||"")}</small><select id="status${o.id}"><option selected>${esc(o.status||"Нове")}</option><option>Нове</option><option>В обробці</option><option>Відправлено</option><option>Виконано</option><option>Скасовано</option></select><div class="actions"><button onclick="saveStatus('${o.id}')">Зберегти статус</button><button class="danger" onclick="delOrder('${o.id}')">Видалити</button></div></div>`).join("")||"<p>Замовлень немає.</p>";
+}
+async function saveStatus(id){try{await api("/api/admin/orders/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:$("status"+id).value})});await orders()}catch(e){alert(e.message)}}
+async function delOrder(id){if(!confirm("Видалити замовлення?"))return;try{await api("/api/admin/orders/"+id,{method:"DELETE"});await orders();await stats()}catch(e){alert(e.message)}}
+
+async function users(){
+ const a=await api("/api/admin/users");
+ $("userList").innerHTML=a.map(u=>`<div class="item"><div class="userline"><img class="avatar" src="${u.avatar||"/logo.jpg"}"><div><b>${esc(u.name||u.username)}</b>${u.badge?`<img class="badge" src="${badgeSrc(u.badge)}">`:""}<div>@${esc(u.username)} · ${esc(u.role)}</div></div></div>
+ <label>Значок біля ніку</label><select id="badge${u.id}"><option value="" ${!u.badge?"selected":""}>Без значка</option><option value="check" ${u.badge==="check"?"selected":""}>Синя галочка</option><option value="admin" ${u.badge==="admin"?"selected":""}>ADMIN</option></select>
+ <div class="actions"><button onclick="setBadge('${u.id}')">Зберегти значок</button>${u.role!=="owner"?`<button class="secondary" onclick="setRole('${u.id}','${u.role==="admin"?"user":"admin"}')">${u.role==="admin"?"Зняти адміна":"Зробити адміном"}</button>`:""}</div></div>`).join("");
+}
+async function setBadge(id){try{await api("/api/admin/users/"+id+"/badge",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({badge:$("badge"+id).value})});await users()}catch(e){alert(e.message)}}
+async function setRole(id,role){try{await api("/api/admin/users/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({role})});await users()}catch(e){alert(e.message)}}
+
+async function promos(){
+ const a=await api("/api/admin/promos");
+ $("promoList").innerHTML=a.map(p=>`<div class="item"><b>${esc(p.code)}</b> — ${Number(p.discount||0)}% <button class="danger" onclick="delPromo('${p.id}')">Видалити</button></div>`).join("")||"<p>Промокодів немає.</p>";
+}
+$("promoForm").onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.target));try{await api("/api/admin/promos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});e.target.reset();$("promoMsg").textContent="Створено ✓";await promos();await stats()}catch(x){$("promoMsg").textContent=x.message}};
+async function delPromo(id){try{await api("/api/admin/promos/"+id,{method:"DELETE"});await promos();await stats()}catch(e){alert(e.message)}}
+
+async function loadSettings(){const s=await api("/api/settings");["shopName","subtitle","pickupText","contactText"].forEach(k=>{if($("settingsForm").elements[k])$("settingsForm").elements[k].value=s[k]||""})}
+$("settingsForm").onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.target));try{await api("/api/admin/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});$("settingsMsg").textContent="Збережено ✓"}catch(x){$("settingsMsg").textContent=x.message}};
+init();
+</script>
+</body></html>
