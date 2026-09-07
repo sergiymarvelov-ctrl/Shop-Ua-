@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>СЮСТР — Оформлення замовлення</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;overflow-x:hidden}
+body{background:#f8f2e5;color:var(--ink,#342719);padding-bottom:95px}
+.checkout{width:100%;max-width:520px;margin:0 auto;padding:14px 16px 30px}
+.checkout-head{text-align:center;padding:8px 0 18px}
+.checkout-head img{width:92px;height:92px;border-radius:50%;object-fit:cover}
+.checkout-head h1{font-size:30px;margin:8px 0 3px}
+.checkout-head p{margin:0;opacity:.7}
+.card{width:100%;background:var(--card,#fffaf0);border:1px solid var(--line,#e4d8c1);border-radius:20px;padding:18px;margin:12px 0}
+.card h2{font-size:22px;margin:0 0 13px}
+label{display:block;font-weight:700;margin:13px 0 5px}
+input,select,textarea{display:block;width:100%;min-height:50px;padding:13px 14px;border:1px solid #ddd0b9;border-radius:12px;background:#fffdf7;color:#342719;font:inherit;font-size:16px}
+textarea{min-height:90px;resize:vertical}
+.total{display:flex;justify-content:space-between;align-items:center;font-size:20px;padding:8px 0}
+.order-btn{display:block;width:100%;min-height:52px;border:0;border-radius:13px;background:var(--gold,#b58827);color:white;font:inherit;font-size:17px;font-weight:700;margin-top:15px}
+.muted{opacity:.68}.message{text-align:center;margin:12px 0;min-height:22px}
+.back{display:block;text-align:center;color:var(--gold,#a77b24);text-decoration:none;margin:16px 0}
+@media(max-width:360px){.checkout{padding-left:12px;padding-right:12px}.checkout-head h1{font-size:27px}}
+</style>
+</head>
+<body>
+<main class="checkout">
+<section class="checkout-head">
+<img src="/logo.jpg" alt="СЮСТР">
+<h1>Оформлення замовлення</h1>
+<p>Заповніть дані для отримання замовлення</p>
+</section>
+
+<form id="orderForm">
+<section class="card">
+<h2>Дані покупця</h2>
+<label for="firstName">Ім’я</label>
+<input id="firstName" required autocomplete="given-name" placeholder="Ваше ім’я">
+<label for="lastName">Прізвище</label>
+<input id="lastName" required autocomplete="family-name" placeholder="Ваше прізвище">
+<label for="phone">Номер телефону</label>
+<input id="phone" type="tel" required autocomplete="tel" placeholder="+380">
+</section>
+
+<section class="card">
+<h2>Доставка</h2>
+<label for="delivery">Спосіб доставки</label>
+<select id="delivery">
+<option value="Самовивіз">Самовивіз</option>
+<option value="Нова пошта">Нова пошта</option>
+</select>
+<div id="addressBox">
+<label for="address">Місто / відділення або адреса</label>
+<input id="address" placeholder="Вкажіть дані доставки">
+</div>
+</section>
+
+<section class="card">
+<h2>Промокод</h2>
+<input id="promo" placeholder="Промокод (необов’язково)">
+</section>
+
+<section class="card">
+<div class="total"><span>До сплати</span><b id="total">0 грн</b></div>
+<button class="order-btn" type="submit">Замовити</button>
+<p id="message" class="message"></p>
+</section>
+</form>
+<a class="back" href="/cart.html">← Повернутися до кошика</a>
+</main>
+
+<script>
+const cart=JSON.parse(localStorage.getItem("cart")||"[]");
+const totalValue=cart.reduce((s,x)=>s+Number(x.price||0)*Number(x.qty||1),0);
+document.getElementById("total").textContent=totalValue+" грн";
+
+(async()=>{
+ try{
+  const r=await fetch("/api/me");
+  const me=await r.json();
+  if(me){
+   document.getElementById("firstName").value=me.name||"";
+   document.getElementById("phone").value=me.phone||"";
+  }
+ }catch(e){}
+})();
+
+document.getElementById("orderForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const message=document.getElementById("message");
+ if(!cart.length){message.textContent="Кошик порожній";return}
+ const payload={
+  items:cart,
+  customer:{
+   firstName:document.getElementById("firstName").value.trim(),
+   lastName:document.getElementById("lastName").value.trim(),
+   phone:document.getElementById("phone").value.trim(),
+   delivery:document.getElementById("delivery").value,
+   address:document.getElementById("address").value.trim(),
+   promo:document.getElementById("promo").value.trim()
+  }
+ };
+ message.textContent="Оформлюємо…";
+ try{
+  const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){message.textContent=j.error||"Не вдалося оформити замовлення";return}
+  localStorage.removeItem("cart");
+  message.textContent="Замовлення оформлено ✓";
+  setTimeout(()=>location="/profile.html",800);
+ }catch(err){message.textContent="Помилка з’єднання із сервером"}
+});
+</script>
+</body>
+</html>
